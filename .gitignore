@@ -1,0 +1,4 @@
+.venv/
+material_processor.log
+*.pyc
+__pycache__/
