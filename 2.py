@@ -49,40 +49,48 @@ if "output_path" not in st.session_state:
 if "production_qty" not in st.session_state:
     st.session_state.production_qty = 1
 
-# 添加 CSS 样式
 st.markdown(
     """
     <style>
     div.stButton > button {
-        width: 120px;
-        height: 50px;
+        /* 默认样式：圆形按钮 */
+        width: 100px; /* 圆形时宽高相等 */
+        height: 100px;
         font-size: 16px;
         font-weight: bold;
-        color: black;
-        background-color: #FFD700;
+        color: white;
+        background-color: #FF6347; /* 默认番茄红 */
         border: none;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        transition: all 0.3s ease;
+        border-radius: 50%; /* 圆形 */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2), 0 6px 20px rgba(0, 0, 0, 0.15); /* 3D 阴影 */
+        transition: all 0.3s ease; /* 丝滑过渡 */
         cursor: pointer;
+        position: relative;
+        top: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 10px auto;
     }
     div.stButton > button:hover {
-        background-color: #4682B4;
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-        transform: translateY(-2px);
+        /* 悬停样式：长方形 */
+        width: 200px; /* 变宽 */
+        height: 60px; /* 变矮 */
+        background-color: #4682B4; /* 悬停时变为钢蓝 */
+        border-radius: 10px; /* 长方形圆角 */
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3), 0 12px 40px rgba(0, 0, 0, 0.2); /* 增强阴影 */
+        top: -2px; /* 轻微上移，3D 效果 */
     }
     div.stButton > button:active {
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        transform: translateY(0);
+        /* 点击样式 */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* 阴影变浅 */
+        top: 2px; /* 轻微下沉 */
     }
     </style>
     """,
     unsafe_allow_html=True
 )
+
+
 
 def process_new_material_codes():
     if st.session_state.conditions_path is None or st.session_state.database_path is None:
@@ -204,9 +212,7 @@ def generate_purchase_list():
         st.error(f"处理失败：{e}")
 
 def main():
-    st.info("运行程序后，浏览器将自动打开")
-    logging.debug("尝试打开浏览器")
-    webbrowser.open("https://material-processor.streamlit.app")
+
     st.title("注意！在开始运行程序前，请确保表格中有以下列名：")
     st.write("采购清单中：新编码，原物料代码，数量，参考材料单价，库存")
     st.write("整理后新旧物料编码对照表：编码，新系统编码")
