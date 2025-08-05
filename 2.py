@@ -1,43 +1,41 @@
-# -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
 from pathlib import Path
 import logging
 import sys
 import os
-import webbrowser
 
-# 配置日志
-log_path = os.path.join(os.path.expanduser("~"), "material_processor.log")
-logging.basicConfig(
-    filename=log_path,
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    encoding="utf-8"
+st.title("注意！在开始运行程序前，请确保表格中有以下列名：")
+st.write("采购清单中：新编码，原物料代码，数量，参考材料单价，库存")
+st.write("整理后新旧物料编码对照表：编码，新系统编码")
+st.write("库存：物料代码，基本计量单位数量")
+option = st.selectbox(
+    "你想执行哪项任务？",
+    ("同步新物料编码", "同步库存数量", "生成采购清单"),
+    index=0,
+    placeholder="任务"
 )
+st.subheader("文件上传")
+if option == "同步新物料编码":
+    st.session_state.conditions_path = st.file_uploader("请选择设备物料清单：")
+    st.session_state.database_path = st.file_uploader("请选择旧物料表格：")
+    st.subheader("请选择保存路径")
+    st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder="例如：/tmp/output.xlsx")
+elif option == "同步库存数量":
+    st.session_state.conditions_path = st.file_uploader("请选择已同步新物料代码的设备物料清单：")
+    st.session_state.database_path = st.file_uploader("请选择库存表格：")
+    st.subheader("请选择保存路径")
+    st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder="例如：/tmp/output.xlsx")
+elif option == "生成采购清单":
+    st.session_state.conditions_path = st.file_uploader("请选择已同步库存的设备物料清单：")
+    st.subheader("请输入生产设备数量")
+    st.session_state.production_qty = st.number_input("生产设备数量：", min_value=1, value=1)
+    st.subheader("请选择保存路径")
+    st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder="例如：/tmp/output.xlsx")
 
-# 检查 Streamlit 版本
-if "streamlit" not in sys.modules:
-    logging.error("Streamlit 未安装")
-    st.error("Streamlit 未安装")
-    sys.exit(1)
 
-# 防止重复运行
-if "app_initialized" not in st.session_state:
-    st.session_state.app_initialized = False
 
-if st.session_state.app_initialized:
-    logging.debug("应用已初始化，跳过重复运行")
-    st.stop()
-else:
-    st.session_state.app_initialized = True
-    try:
-        st.set_page_config(page_title="Material Processor")
-        logging.debug("页面配置成功")
-    except Exception as e:
-        logging.error(f"页面配置失败: {e}", exc_info=True)
-        st.error(f"页面配置失败: {e}")
-        sys.exit(1)
+
 
 # 初始化 session_state
 if "conditions_path" not in st.session_state:
@@ -211,56 +209,19 @@ def generate_purchase_list():
         logging.error(f"生成采购清单失败: {e}", exc_info=True)
         st.error(f"处理失败：{e}")
 
-def main():
-
-    st.title("注意！在开始运行程序前，请确保表格中有以下列名：")
-    st.write("采购清单中：新编码，原物料代码，数量，参考材料单价，库存")
-    st.write("整理后新旧物料编码对照表：编码，新系统编码")
-    st.write("库存：物料代码，基本计量单位数量")
-    option = st.selectbox(
-        "你想执行哪项任务？",
-        ("同步新物料编码", "同步库存数量", "生成采购清单"),
-        index=0,
-        placeholder="任务"
-    )
-    st.subheader("文件上传")
+if st.button("开始运行"):
+    logging.debug(f"选择任务：{option}")
     if option == "同步新物料编码":
-        st.session_state.conditions_path = st.file_uploader("请选择设备物料清单：")
-        st.session_state.database_path = st.file_uploader("请选择旧物料表格：")
-        st.subheader("请选择保存路径")
-        st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder="例如：/tmp/output.xlsx")
+        process_new_material_codes()
     elif option == "同步库存数量":
-        st.session_state.conditions_path = st.file_uploader("请选择已同步新物料代码的设备物料清单：")
-        st.session_state.database_path = st.file_uploader("请选择库存表格：")
-        st.subheader("请选择保存路径")
-        st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder="例如：/tmp/output.xlsx")
+        process_inventory()
     elif option == "生成采购清单":
-        st.session_state.conditions_path = st.file_uploader("请选择已同步库存的设备物料清单：")
-        st.subheader("请输入生产设备数量")
-        st.session_state.production_qty = st.number_input("生产设备数量：", min_value=1, value=1)
-        st.subheader("请选择保存路径")
-        st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder="例如：/tmp/output.xlsx")
-    if st.button("开始运行"):
-        logging.debug(f"选择任务：{option}")
-        if option == "同步新物料编码":
-            process_new_material_codes()
-        elif option == "同步库存数量":
-            process_inventory()
-        elif option == "生成采购清单":
-            generate_purchase_list()
-        else:
-            st.error("请正确选择任务后再执行应用")
-            logging.error("未选择有效任务")
-    if st.button("清除缓存"):
-        st.session_state.clear()
-        st.session_state.app_initialized = False
-        st.success("状态已重置")
-        logging.debug("状态已重置")
-
-if __name__ == "__main__":
-    try:
-        logging.debug("开始运行 main()")
-        main()
-    except Exception as e:
-        logging.error(f"主程序运行失败: {e}", exc_info=True)
-        st.error(f"主程序运行失败: {e}")
+        generate_purchase_list()
+    else:
+        st.error("请正确选择任务后再执行应用")
+        logging.error("未选择有效任务")
+if st.button("清除缓存"):
+    st.session_state.clear()
+    st.session_state.app_initialized = False
+    st.success("状态已重置")
+    logging.debug("状态已重置")
