@@ -6,22 +6,9 @@ import logging
 import sys
 import os
 import webbrowser
-import argparse
 
-# 检查 Streamlit 版本
-required_streamlit_version = "1.47.1"
-try:
-    import streamlit
-    if streamlit.__version__ != required_streamlit_version:
-        logging.warning(f"当前 Streamlit 版本为 {streamlit.__version__}，建议使用 {required_streamlit_version}")
-        print(f"警告：当前 Streamlit 版本为 {streamlit.__version__}，建议使用 {required_streamlit_version}")
-except ImportError:
-    logging.error("Streamlit 未安装")
-    print("错误：Streamlit 未安装，请安装 Streamlit")
-    sys.exit(1)
-
-# 配置日志（移到用户目录）
-log_path = os.path.join(os.path.expanduser("~"), "A.log")
+# 配置日志
+log_path = os.path.join(os.path.expanduser("~"), "material_processor.log")
 logging.basicConfig(
     filename=log_path,
     level=logging.DEBUG,
@@ -29,20 +16,11 @@ logging.basicConfig(
     encoding="utf-8"
 )
 
-# 设置环境变量
-os.environ["STREAMLIT_SERVER_ADDRESS"] = "localhost"
-os.environ["STREAMLIT_SERVER_PORT"] = "8501"
-if getattr(sys, 'frozen', False):
-    base_path = sys._MEIPASS
-    static_path = os.path.join(base_path, "streamlit", "static")
-    os.environ["STREAMLIT_STATIC_PATH"] = static_path
-    logging.debug(f"打包环境：设置 STREAMLIT_STATIC_PATH 为 {static_path}")
-    print(f"调试：设置 STREAMLIT_STATIC_PATH 为 {static_path}")
-else:
-    static_path = r"F:\python\Lib\site-packages\streamlit\static"
-    os.environ["STREAMLIT_STATIC_PATH"] = static_path
-    logging.debug(f"开发环境：设置 STREAMLIT_STATIC_PATH 为 {static_path}")
-    print(f"调试：设置 STREAMLIT_STATIC_PATH 为 {static_path}")
+# 检查 Streamlit 版本
+if "streamlit" not in sys.modules:
+    logging.error("Streamlit 未安装")
+    st.error("Streamlit 未安装")
+    sys.exit(1)
 
 # 防止重复运行
 if "app_initialized" not in st.session_state:
@@ -50,63 +28,61 @@ if "app_initialized" not in st.session_state:
 
 if st.session_state.app_initialized:
     logging.debug("应用已初始化，跳过重复运行")
-    print("调试：应用已初始化，跳过重复运行")
     st.stop()
 else:
     st.session_state.app_initialized = True
-    # 设置页面配置
     try:
         st.set_page_config(page_title="Material Processor")
         logging.debug("页面配置成功")
-        print("调试：页面配置成功")
     except Exception as e:
         logging.error(f"页面配置失败: {e}", exc_info=True)
-        print(f"错误：页面配置失败: {e}")
+        st.error(f"页面配置失败: {e}")
+        sys.exit(1)
 
-    # 初始化 session_state
-    if "conditions_path" not in st.session_state:
-        st.session_state.conditions_path = None
-    if "database_path" not in st.session_state:
-        st.session_state.database_path = None
-    if "output_path" not in st.session_state:
-        st.session_state.output_path = ""
-    if "production_qty" not in st.session_state:
-        st.session_state.production_qty = 1
+# 初始化 session_state
+if "conditions_path" not in st.session_state:
+    st.session_state.conditions_path = None
+if "database_path" not in st.session_state:
+    st.session_state.database_path = None
+if "output_path" not in st.session_state:
+    st.session_state.output_path = ""
+if "production_qty" not in st.session_state:
+    st.session_state.production_qty = 1
 
-    # 添加 CSS 样式
-    st.markdown(
-        """
-        <style>
-        div.stButton > button {
-            width: 120px;
-            height: 50px;
-            font-size: 16px;
-            font-weight: bold;
-            color: black;
-            background-color: #FFD700;
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 10px auto;
-        }
-        div.stButton > button:hover {
-            background-color: #4682B4;
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-            transform: translateY(-2px);
-        }
-        div.stButton > button:active {
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            transform: translateY(0);
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+# 添加 CSS 样式
+st.markdown(
+    """
+    <style>
+    div.stButton > button {
+        width: 120px;
+        height: 50px;
+        font-size: 16px;
+        font-weight: bold;
+        color: black;
+        background-color: #FFD700;
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 10px auto;
+    }
+    div.stButton > button:hover {
+        background-color: #4682B4;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        transform: translateY(-2px);
+    }
+    div.stButton > button:active {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        transform: translateY(0);
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 def process_new_material_codes():
     if st.session_state.conditions_path is None or st.session_state.database_path is None:
@@ -228,14 +204,9 @@ def generate_purchase_list():
         st.error(f"处理失败：{e}")
 
 def main():
-    parser = argparse.ArgumentParser(description="Material Processor")
-    parser.add_argument("--port", type=int, default=8501, help="Port to run Streamlit app")
-    args = parser.parse_args()
-    port = args.port
-    st.info(f"运行程序后，浏览器将自动打开 http://localhost:{port}")
-    logging.debug(f"尝试打开浏览器：http://localhost:{port}")
-    print(f"调试：尝试打开浏览器：http://localhost:{port}")
-    webbrowser.open(f"http://localhost:{port}")
+    st.info("运行程序后，浏览器将自动打开")
+    logging.debug("尝试打开浏览器")
+    webbrowser.open("https://material-processor.streamlit.app")
     st.title("注意！在开始运行程序前，请确保表格中有以下列名：")
     st.write("采购清单中：新编码，原物料代码，数量，参考材料单价，库存")
     st.write("整理后新旧物料编码对照表：编码，新系统编码")
@@ -251,21 +222,20 @@ def main():
         st.session_state.conditions_path = st.file_uploader("请选择设备物料清单：")
         st.session_state.database_path = st.file_uploader("请选择旧物料表格：")
         st.subheader("请选择保存路径")
-        st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder=r"例如：C:\Users\Administrator\Desktop\测试")
+        st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder="例如：/tmp/output.xlsx")
     elif option == "同步库存数量":
         st.session_state.conditions_path = st.file_uploader("请选择已同步新物料代码的设备物料清单：")
         st.session_state.database_path = st.file_uploader("请选择库存表格：")
         st.subheader("请选择保存路径")
-        st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder=r"例如：C:\Users\Administrator\Desktop\测试")
+        st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder="例如：/tmp/output.xlsx")
     elif option == "生成采购清单":
         st.session_state.conditions_path = st.file_uploader("请选择已同步库存的设备物料清单：")
         st.subheader("请输入生产设备数量")
         st.session_state.production_qty = st.number_input("生产设备数量：", min_value=1, value=1)
         st.subheader("请选择保存路径")
-        st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder=r"例如：C:\Users\Administrator\Desktop\测试")
+        st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder="例如：/tmp/output.xlsx")
     if st.button("开始运行"):
         logging.debug(f"选择任务：{option}")
-        print(f"调试：选择任务：{option}")
         if option == "同步新物料编码":
             process_new_material_codes()
         elif option == "同步库存数量":
@@ -280,13 +250,11 @@ def main():
         st.session_state.app_initialized = False
         st.success("状态已重置")
         logging.debug("状态已重置")
-        print("调试：状态已重置")
 
 if __name__ == "__main__":
-    logging.debug("开始运行 main()")
-    print("调试：开始运行 main()")
     try:
+        logging.debug("开始运行 main()")
         main()
     except Exception as e:
         logging.error(f"主程序运行失败: {e}", exc_info=True)
-        print(f"错误：主程序运行失败: {e}")
+        st.error(f"主程序运行失败: {e}")
