@@ -5,6 +5,9 @@ import logging
 import sys
 import os
 
+# 配置日志
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 st.title("注意！在开始运行程序前，请确保表格中有以下列名：")
 st.write("采购清单中：新编码，原物料代码，数量，参考材料单价，库存")
 st.write("整理后新旧物料编码对照表：编码，新系统编码")
@@ -17,25 +20,36 @@ option = st.selectbox(
 )
 st.subheader("文件上传")
 if option == "同步新物料编码":
-    st.session_state.conditions_path = st.file_uploader("请选择设备物料清单：")
-    st.session_state.database_path = st.file_uploader("请选择旧物料表格：")
+    st.session_state.conditions_path = st.file_uploader("请选择设备物料清单：", type=["xlsx"])
+    st.session_state.database_path = st.file_uploader("请选择旧物料表格：", type=["xlsx"])
     st.subheader("请选择保存路径")
-    st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder="例如：/tmp/output.xlsx")
+    default_output_dir = "/tmp" if os.path.isdir("/tmp") else os.getcwd()
+    st.session_state.output_path = st.text_input(
+        "请输入文件名：",
+        value=os.path.join(default_output_dir, "updated_material_codes.xlsx"),
+        placeholder="例如：output.xlsx"
+    )
 elif option == "同步库存数量":
-    st.session_state.conditions_path = st.file_uploader("请选择已同步新物料代码的设备物料清单：")
-    st.session_state.database_path = st.file_uploader("请选择库存表格：")
+    st.session_state.conditions_path = st.file_uploader("请选择已同步新物料代码的设备物料清单：", type=["xlsx"])
+    st.session_state.database_path = st.file_uploader("请选择库存表格：", type=["xlsx"])
     st.subheader("请选择保存路径")
-    st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder="例如：/tmp/output.xlsx")
+    default_output_dir = "/tmp" if os.path.isdir("/tmp") else os.getcwd()
+    st.session_state.output_path = st.text_input(
+        "请输入文件名：",
+        value=os.path.join(default_output_dir, "updated_inventory.xlsx"),
+        placeholder="例如：output.xlsx"
+    )
 elif option == "生成采购清单":
-    st.session_state.conditions_path = st.file_uploader("请选择已同步库存的设备物料清单：")
+    st.session_state.conditions_path = st.file_uploader("请选择已同步库存的设备物料清单：", type=["xlsx"])
     st.subheader("请输入生产设备数量")
     st.session_state.production_qty = st.number_input("生产设备数量：", min_value=1, value=1)
     st.subheader("请选择保存路径")
-    st.session_state.output_path = st.text_input("请输入文件保存路径：", placeholder="例如：/tmp/output.xlsx")
-
-
-
-
+    default_output_dir = "/tmp" if os.path.isdir("/tmp") else os.getcwd()
+    st.session_state.output_path = st.text_input(
+        "请输入文件名：",
+        value=os.path.join(default_output_dir, "purchase_list.xlsx"),
+        placeholder="例如：output.xlsx"
+    )
 
 # 初始化 session_state
 if "conditions_path" not in st.session_state:
@@ -47,17 +61,17 @@ if "output_path" not in st.session_state:
 if "production_qty" not in st.session_state:
     st.session_state.production_qty = 1
 
+# 自定义按钮样式
 st.markdown(
     """
     <style>
     div.stButton > button {
-        /* 默认样式：圆形按钮 */
-        width: 100px; /* 圆形时宽高相等 */
+        width: 100px;
         height: 100px;
         font-size: 16px;
         font-weight: bold;
         color: white;
-        background-color: #FF6347; /* 默认番茄红 */
+        background-color: #FFE34B; 
         border: none;
         border-radius: 50%; /* 圆形 */
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2), 0 6px 20px rgba(0, 0, 0, 0.15); /* 3D 阴影 */
@@ -70,7 +84,6 @@ st.markdown(
         justify-content: center;
     }
     div.stButton > button:hover {
-        /* 悬停样式：长方形 */
         width: 200px; /* 变宽 */
         height: 60px; /* 变矮 */
         background-color: #4682B4; /* 悬停时变为钢蓝 */
@@ -79,7 +92,6 @@ st.markdown(
         top: -2px; /* 轻微上移，3D 效果 */
     }
     div.stButton > button:active {
-        /* 点击样式 */
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* 阴影变浅 */
         top: 2px; /* 轻微下沉 */
     }
@@ -88,21 +100,29 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
+# 验证路径
+def validate_path(path):
+    try:
+        path = Path(path)
+        # 确保目录存在
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+    except Exception as e:
+        st.error(f"无效的保存路径：{str(e)}")
+        logging.error(f"无效的保存路径：{str(e)}", exc_info=True)
+        return None
 
 def process_new_material_codes():
     if st.session_state.conditions_path is None or st.session_state.database_path is None:
         st.error("请上传所有所需文件！")
         logging.error("缺少上传文件")
         return
-    if not st.session_state.output_path:
-        st.error("请输入有效的保存路径！")
-        logging.error("缺少保存路径")
+    output_path = validate_path(st.session_state.output_path)
+    if output_path is None:
         return
     try:
         conditions = pd.read_excel(st.session_state.conditions_path)
         database = pd.read_excel(st.session_state.database_path)
-        output_path = Path(st.session_state.output_path)
         required_conditions_cols = ["原物料代码", "新编码"]
         required_database_cols = ["编码", "新系统编码"]
         if not all(col in conditions.columns for col in required_conditions_cols):
@@ -122,25 +142,30 @@ def process_new_material_codes():
             else:
                 conditions.at[index, "新编码"] = ""
         conditions.to_excel(output_path, index=False)
+        with open(output_path, "rb") as file:
+            st.download_button(
+                label="下载更新后的物料清单",
+                data=file,
+                file_name=output_path.name,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
         st.success(f"完成！已成功将新物料代码同步到 {output_path}")
         logging.debug(f"成功同步新物料代码到 {output_path}")
     except Exception as e:
-        logging.error(f"处理新物料编码失败: {e}", exc_info=True)
-        st.error(f"处理失败：{e}")
+        logging.error(f"处理新物料编码失败: {str(e)}", exc_info=True)
+        st.error(f"处理失败：{str(e)}")
 
 def process_inventory():
     if st.session_state.conditions_path is None or st.session_state.database_path is None:
         st.error("请上传所有所需文件！")
         logging.error("缺少上传文件")
         return
-    if not st.session_state.output_path:
-        st.error("请输入有效的保存路径！")
-        logging.error("缺少保存路径")
+    output_path = validate_path(st.session_state.output_path)
+    if output_path is None:
         return
     try:
         conditions = pd.read_excel(st.session_state.conditions_path)
         database = pd.read_excel(st.session_state.database_path)
-        output_path = Path(st.session_state.output_path)
         required_conditions_cols = ["新编码", "库存"]
         required_database_cols = ["物料代码", "基本计量单位数量"]
         if not all(col in conditions.columns for col in required_conditions_cols):
@@ -164,24 +189,29 @@ def process_inventory():
             else:
                 conditions.at[index, "库存"] = "0"
         conditions.to_excel(output_path, index=False)
+        with open(output_path, "rb") as file:
+            st.download_button(
+                label="下载更新后的库存清单",
+                data=file,
+                file_name=output_path.name,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
         st.success(f"完成！已成功将库存同步到 {output_path}")
         logging.debug(f"成功同步库存到 {output_path}")
     except Exception as e:
-        logging.error(f"处理库存失败: {e}", exc_info=True)
-        st.error(f"处理失败：{e}")
+        logging.error(f"处理库存失败: {str(e)}", exc_info=True)
+        st.error(f"处理失败：{str(e)}")
 
 def generate_purchase_list():
     if st.session_state.conditions_path is None:
         st.error("请上传设备物料清单！")
         logging.error("缺少设备物料清单")
         return
-    if not st.session_state.output_path:
-        st.error("请输入有效的保存路径！")
-        logging.error("缺少保存路径")
+    output_path = validate_path(st.session_state.output_path)
+    if output_path is None:
         return
     try:
         conditions = pd.read_excel(st.session_state.conditions_path)
-        output_path = Path(st.session_state.output_path)
         production_qty = st.session_state.production_qty
         required_cols = ["数量", "库存", "参考材料单价"]
         if not all(col in conditions.columns for col in required_cols):
@@ -203,11 +233,18 @@ def generate_purchase_list():
             purchase_list.to_excel(writer, sheet_name="购买清单", index=False)
             summary = pd.DataFrame([["成本", total_cost]], columns=["项目", "金额"])
             summary.to_excel(writer, sheet_name="成本汇总", index=False)
+        with open(output_path, "rb") as file:
+            st.download_button(
+                label="下载采购清单",
+                data=file,
+                file_name=output_path.name,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
         st.success(f"处理完成！报表已保存到 {output_path}\n总成本：{total_cost:.2f}")
         logging.debug(f"成功生成采购清单到 {output_path}，总成本：{total_cost:.2f}")
     except Exception as e:
-        logging.error(f"生成采购清单失败: {e}", exc_info=True)
-        st.error(f"处理失败：{e}")
+        logging.error(f"生成采购清单失败: {str(e)}", exc_info=True)
+        st.error(f"处理失败：{str(e)}")
 
 if st.button("开始运行"):
     logging.debug(f"选择任务：{option}")
