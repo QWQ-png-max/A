@@ -1,13 +1,3 @@
 streamlit==1.47.1
 pandas
 openpyxl
-streamlit_drawable_canvas
-cv2
-numpy
-PIL
-os
-datetime
-torch
-diffusers
-glob
-time
